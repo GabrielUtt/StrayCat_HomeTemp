@@ -1,23 +1,23 @@
 ---
 name: User Story
-about: This template is for creating user stories
+about: Vorlage für User Stories
 title: ''
 labels: ''
 assignees: ''
 
 ---
 
-**As a** [role]  
- **I need** [function]  
- **So that** [benefit]  
+**Als** [Wer?/Rolle]  
+ **brauche ich** [Was?/Funktion]  
+ **so dass** [Warum?/Nutzen]  
    
- ### Details and Assumptions
- * [document what you know]
+ ### Details und Annahmen
+ * [dokumentiere das, was du weißt]
    
- ### Acceptance Criteria  
+ ### Akzeptanz Kriterien
    
- ```gherkin
- Given [some context]
- When [certain action is taken]
- Then [the outcome of action is observed]
+ ```Gherkin Syntax
+ Bei [gegebene Vorbedingung]
+ wenn [eine bestimmte Aktion ausgeführt wird]
+ dann [erwartete Reaktion des Systems]
  ```
