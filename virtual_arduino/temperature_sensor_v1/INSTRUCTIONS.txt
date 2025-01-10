@@ -1,0 +1,12 @@
+Arduino Temperature sensor outputting temperature in Celsius and Fahrenheit to serial monitor
+
+Project taken from:
+
+https://www.youtube.com/watch?v=1WqVoWjmkeE&list=PLWqnlHhsmcI4eBDLBtaZs16XZq0WL1SlP&index=5
+(Interfacing Temperature Sensor with Arduino using TinkerCAD | Code for the Temperature sensor)
+
+https://www.learnelectronicsindia.com/post/interfacing-temperature-sensor-with-arduino-using-tinkercad
+(more detailed project instructions)
+
+https://www.tinkercad.com/things/hrslhYv0cMJ-temperaturesensor?sharecode=3bNiEuGSgaZn_xncnxhNyBMfgTcNfY0_VJHsgbiHXhU
+(Tinkercad)
