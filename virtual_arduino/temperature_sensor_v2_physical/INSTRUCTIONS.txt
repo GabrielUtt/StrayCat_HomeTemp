@@ -1,0 +1,9 @@
+Arduino Temperature and Humidity sensor outputting temperature and Humidity to serial monitor
+
+Project and Code taken from:
+
+https://www.youtube.com/watch?v=ZbBLU9Pw4g8
+(Youtube Tutorial for DHT11 Sensor, Elegoo Starter Kit)
+
+https://www.elegoo.com/blogs/arduino-projects/elegoo-mega-2560-the-most-complete-starter-kit-tutorial
+(Elegoo Starter Kit)
