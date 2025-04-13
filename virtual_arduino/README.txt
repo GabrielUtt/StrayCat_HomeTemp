@@ -10,5 +10,5 @@ Circuit:
 Instructions:
 - .txt file (INSTRUCTIONS.txt) with additional instructions
 
-Tinkercad:
-- Link zu Tinkercad Projekt (in INSTRUCTIONS.txt)
+Tinkercad/Wokwi:
+- Link zu Tinkercad or Wokwi Projekt (in INSTRUCTIONS.txt)

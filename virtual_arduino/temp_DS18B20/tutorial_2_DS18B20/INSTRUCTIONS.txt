@@ -1,0 +1,9 @@
+Guide for DS18B20 Temperature Sensor with Arduino (multiple sensors)
+
+Project and Code taken from:
+
+https://randomnerdtutorials.com/guide-for-ds18b20-temperature-sensor-with-arduino/
+
+virtual implementation:
+https://wokwi.com/projects/421628414510088193
+
