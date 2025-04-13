@@ -1,0 +1,7 @@
+Tutorial for using Micro SD module with Arduino Uno
+
+Project taken from:
+
+https://www.youtube.com/watch?v=sS_oW81NweI
+(Arduino Tutorial: SD card module Micro SD tutorial DIY.)
+
