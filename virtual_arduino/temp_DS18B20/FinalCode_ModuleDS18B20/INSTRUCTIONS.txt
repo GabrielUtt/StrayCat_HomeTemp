@@ -1,0 +1,8 @@
+DS18B20 Temperature Sensor with Arduino (multiple sensors)
+
+Final Code by kaptenblaubar
+
+Remark: Make sure all three sensors are connected to circuit (two extra wires needed for gap in Bus Strip)
+
+
+
