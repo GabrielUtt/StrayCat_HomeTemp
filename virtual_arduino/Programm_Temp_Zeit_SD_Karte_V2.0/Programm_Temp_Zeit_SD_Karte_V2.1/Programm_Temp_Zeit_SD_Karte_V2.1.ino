@@ -1,3 +1,7 @@
+// TDs Ideas
+
+// Remove array and max count and directly use sensors.getTempCByIndex(i) without intermediate save and string transformation
+
 #include <SPI.h> // standard library to communicate with SPI devices (no installation)
 #include <SD.h> // standard library that enables reading and writing on SD cards (no installation)	
 #include <Wire.h> // standard library to communicate with I2C devices (no installation)
@@ -13,13 +17,16 @@ DS3231 rtc(SDA, SCL); // Start an instance of the DS3231 class, using
 File DataStorage; // Definieren von DataStorage als Datei
 
 OneWire oneWire(ONE_WIRE_BUS); // create oneWire object
-DallasTemperature sensors(&one	Wire); // create DallasTemp object, referencing oneWire object
+DallasTemperature sensors(&oneWire); // create DallasTemp object, referencing oneWire object
 
 int delayamount = 10000; // Abstand zwischen den wertespeicherungen in ms
 int deviceCount = 0;
 unsigned long letzteZeit = 0;
 int CS_PIN = 10; // Port andem der CS pin des SD-Karten Gerätes angeschlossen ist
 
+const int MAX_SENSORS = 5; // maximum number of sensors expected
+float Temp[MAX_SENSORS]; // fixed array for temperature values
+String TempStr[MAX_SENSORS]; // fixed array for temperature strings
 
 void setup() {
   Serial.begin(115200); // Starten der senosoren 
@@ -28,8 +35,11 @@ void setup() {
   sensors.begin();
 
   deviceCount = sensors.getDeviceCount(); // Variable anzahl der Temperatur - Sensoren
-  float Temp[devicecount]; // create an array to hold all temperatures
-  String TempStr[devicecount];
+
+  if (deviceCount > MAX_SENSORS) {
+    deviceCount = MAX_SENSORS; // limit to maximum to avoid array overflow
+  }
+
   Serial.print("Found ");
   Serial.print(deviceCount, DEC); // Zählen der angeschlossenen Temperatursensoren
   Serial.println(" devices.");
@@ -52,12 +62,12 @@ void loop() {
   sensors.requestTemperatures(); // Abrufen der Werte von den Sensoren
    String aktuellesDatum = rtc.getDateStr(FORMAT_LONG, FORMAT_BIGENDIAN); // Abrufen des aktuellen Datums
    aktuellesDatum.replace(".",""); // Neues Format DDMMYYYY
-   CurrFileName = aktuellesDatum + ".txt";
+   String CurrFileName = aktuellesDatum + ".txt";
    
    DataStorage = SD.open(CurrFileName, FILE_WRITE); // öffnen/erstellen einer Datei Name: Datum
    
    if (DataStorage) {
-	for (int i = 0; i < devicecount; i++) {
+	for (int i = 0; i < deviceCount; i++) {
 	  Temp[i] = sensors.getTempCByIndex(i); // store each temperature
 	  TempStr[i] = String(Temp[i], 2);
 	  TempStr[i].replace('.', ',');
@@ -78,7 +88,7 @@ void loop() {
     
 	DataStorage.print(rtc.getTimeStr()); // Print time
 
-	for (int i = 0; i < devicecount; i++) {
+	for (int i = 0; i < deviceCount; i++) {
 	  DataStorage.print(";");            // Print separator
 	  DataStorage.print(TempStr[i]);      // Print temperature string
 	}
