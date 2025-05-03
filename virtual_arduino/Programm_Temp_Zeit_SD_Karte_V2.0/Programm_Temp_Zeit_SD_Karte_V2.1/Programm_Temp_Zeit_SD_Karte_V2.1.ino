@@ -85,7 +85,9 @@ void loop() {
     Temp1komma.replace('.', ','); // Ersetzen der . durch ,
     Temp2komma.replace('.', ',');
     Temp3komma.replace('.', ','); */
-    
+
+  DataStorage.print(rtc.getDateStr(FORMAT_LONG, FORMAT_BIGENDIAN));
+  DataStorage.print(";");
 	DataStorage.print(rtc.getTimeStr()); // Print time
 
 	for (int i = 0; i < deviceCount; i++) {
