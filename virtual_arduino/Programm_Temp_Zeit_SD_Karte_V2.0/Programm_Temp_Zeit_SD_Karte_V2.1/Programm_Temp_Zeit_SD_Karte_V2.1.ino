@@ -19,7 +19,7 @@ File DataStorage; // Definieren von DataStorage als Datei
 OneWire oneWire(ONE_WIRE_BUS); // create oneWire object
 DallasTemperature sensors(&oneWire); // create DallasTemp object, referencing oneWire object
 
-int delayamount = 10000; // Abstand zwischen den wertespeicherungen in ms
+int delayamount = 10000; // Technisches Limit zwischen 125-135ms Abstand zwischen den wertespeicherungen in ms
 int deviceCount = 0;
 unsigned long letzteZeit = 0;
 int CS_PIN = 10; // Port andem der CS pin des SD-Karten Gerätes angeschlossen ist
@@ -27,6 +27,7 @@ int CS_PIN = 10; // Port andem der CS pin des SD-Karten Gerätes angeschlossen i
 const int MAX_SENSORS = 5; // maximum number of sensors expected
 float Temp[MAX_SENSORS]; // fixed array for temperature values
 String TempStr[MAX_SENSORS]; // fixed array for temperature strings
+unsigned long startZeit; // variable um bessere abstände zu berechnen
 
 void setup() {
   Serial.begin(115200); // Starten der senosoren 
@@ -57,7 +58,7 @@ void setup() {
 void loop() {
  
 
-  unsigned long startZeit = millis();
+  startZeit = millis(); //
    
   sensors.requestTemperatures(); // Abrufen der Werte von den Sensoren
    String aktuellesDatum = rtc.getDateStr(FORMAT_LONG, FORMAT_BIGENDIAN); // Abrufen des aktuellen Datums
@@ -112,8 +113,10 @@ void loop() {
     Serial.print(CurrFileName);
     Serial.println("Datei konnte nicht geöffnet werden"); // Fehlermeldung wenn datei öffnung fehlgeschlagen
    }
-
-delay(delayamount); // verzögerung um variable oben eingestellt
+Serial.println(millis()-startZeit);
+while(millis() - startZeit <= delayamount){
+  
+}
 
 
 
