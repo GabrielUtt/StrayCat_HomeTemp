@@ -1,5 +1,10 @@
 Description Project
 
+Temperature from three different sensors saved to SD-Card in specified intervals
+
 Use DDS3231 library from here:
 http://www.rinkydinkelectronics.com/library.php?id=73
+
+Wiring Diagramm can be found under
+https://wokwi.com/projects/428203200077432833
 
