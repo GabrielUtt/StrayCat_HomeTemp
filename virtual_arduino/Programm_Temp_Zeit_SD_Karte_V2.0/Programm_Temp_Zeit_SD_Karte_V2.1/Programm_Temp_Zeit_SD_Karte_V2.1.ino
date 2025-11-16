@@ -19,7 +19,7 @@ File DataStorage; // Definieren von DataStorage als Datei
 OneWire oneWire(ONE_WIRE_BUS); // create oneWire object
 DallasTemperature sensors(&oneWire); // create DallasTemp object, referencing oneWire object
 
-int delayamount = 10000; // Technisches Limit zwischen 125-135ms Abstand zwischen den wertespeicherungen in ms
+unsigned long delayamount = 60000; // Technisches Limit zwischen 125-135ms Abstand zwischen den wertespeicherungen in ms
 int deviceCount = 0;
 unsigned long letzteZeit = 0;
 int CS_PIN = 10; // Port andem der CS pin des SD-Karten Gerätes angeschlossen ist
