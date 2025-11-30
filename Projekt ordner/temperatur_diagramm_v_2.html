@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Temperatur-Diagramme (lokal) — Version 2</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#9aa4b2;--avail:#16a34a;}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;color:#e6eef6;background:linear-gradient(180deg,#071025 0%, #07172a 100%);}    
+    .wrap{max-width:1100px;margin:18px auto;padding:18px;background:rgba(255,255,255,0.03);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+    h1{margin:0 0 12px;font-size:20px}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    .controls> *{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:var(--muted)}
+    label{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+    button{cursor:pointer;background:linear-gradient(180deg,#0f1724,#06121a);border:1px solid rgba(255,255,255,0.04);color:#dff6ff;padding:8px 12px;border-radius:8px}
+    canvas{background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);border-radius:8px;padding:8px;width:100%}
+    footer{margin-top:12px;color:var(--muted);font-size:13px}
+    .small{font-size:13px;color:var(--muted)}
+    .flex{display:flex;gap:8px;align-items:center}
+
+    /* Calendar */
+    .calendar{width:280px;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
+    .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+    .cal-day{padding:6px;border-radius:6px}
+    .cal-day.disabled{color:rgba(255,255,255,0.18)}
+    .cal-day.available{background:linear-gradient(180deg,var(--avail),#0b8a3a);color:white;font-weight:600;cursor:pointer}
+    .cal-day.today{box-shadow:0 0 0 2px rgba(6,182,212,0.12);border-radius:6px}
+    .available-legend{font-size:12px;color:var(--muted);margin-left:8px}
+
+    .top-row{display:flex;gap:12px;align-items:flex-start}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Temperatur‑Diagramme (lokal)</h1>
+    <div class="top-row">
+      <div style="flex:1">
+        <div class="controls">
+          <div>
+            <label class="flex">Ordner mit TXT-Dateien auswählen
+              <input id="fileInput" type="file" webkitdirectory multiple style="margin-left:8px" />
+            </label>
+          </div>
+          <div>
+            <label class="flex">(oder) Ordner per Browser öffnen
+              <button id="dirPickBtn" style="margin-left:8px">Ordner öffnen</button>
+            </label>
+          </div>
+
+          <div>
+            <label>Ansicht
+              <select id="rangeSelect" style="margin-left:8px">
+                <option value="day">Tag</option>
+                <option value="week">Woche</option>
+                <option value="month">Monat</option>
+                <option value="all">Alle Daten</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="flex">
+            <button id="loadBtn">Diagramm aktualisieren</button>
+            <button id="prevBtn">◀</button>
+            <button id="nextBtn">▶</button>
+          </div>
+
+          <div style="margin-left:auto" class="small">Hinweis: Dateien müssen den Namen <code>YYYYMMDD.txt</code> haben; Groß-/Kleinschreibung wird ignoriert. Zeilenformat: <code>YYYY.MM.DD;HH:MM:SS;T1;T2</code>.</div>
+        </div>
+
+        <canvas id="chart" height="320"></canvas>
+      </div>
+
+      <div style="width:320px;margin-left:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div id="calendar" class="calendar"></div>
+          <div style="flex:1">
+            <div class="available-legend">Grün = Tag mit vorhandener Datei. Klick auf einen Tag lädt das Diagramm.</div>
+            <div id="availableList" class="small" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="small">Öffne diese Datei lokal (z. B. per Doppelklick). Für volle Ordner‑Zugriffs‑Funktionen empfehle ich einen Chromium‑Browser. Wenn etwas nicht funktioniert: starte einen lokalen Webserver (z. B. <code>python -m http.server</code>) und öffne <code>http://localhost:8000</code>.</div>
+    </footer>
+  </div>
+
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+  // --- Helfer: Parsing ---
+  function parseLine(line){
+    line = line.trim();
+    if(!line) return null;
+    const parts = line.split(';');
+    if(parts.length < 4) return null;
+    const dateStr = parts[0].trim();
+    const timeStr = parts[1].trim();
+    const t1s = parts[2].trim().replace(',', '.');
+    const t2s = parts[3].trim().replace(',', '.');
+    const dparts = dateStr.split('.');
+    const tparts = timeStr.split(':');
+    if(dparts.length!==3 || tparts.length!==3) return null;
+    const year = parseInt(dparts[0],10);
+    const month = parseInt(dparts[1],10)-1;
+    const day = parseInt(dparts[2],10);
+    const hour = parseInt(tparts[0],10);
+    const minute = parseInt(tparts[1],10);
+    const second = parseInt(tparts[2],10);
+    const dt = new Date(year, month, day, hour, minute, second);
+    const t1 = parseFloat(t1s.replace(/[^\d\.-]/g,''));
+    const t2 = parseFloat(t2s.replace(/[^\d\.-]/g,''));
+    if(isNaN(dt.getTime()) || isNaN(t1) || isNaN(t2)) return null;
+    return {ts: dt.getTime(), date: dt, t1: t1, t2: t2};
+  }
+
+  // read files from <input type=file> (webkitdirectory)
+  async function readFilesFromFileInput(files){
+    const entries = [];
+    const availableFileDates = new Set();
+    const re = /^\d{8}\.txt$/i; // case-insensitive
+    for(const f of files){
+      if(!re.test(f.name)) continue;
+      const fileDateKey = f.name.substr(0,8);
+      availableFileDates.add(fileDateKey);
+      try{
+        const txt = await f.text();
+        const lines = txt.split(/\r?\n/);
+        for(const l of lines){
+          const parsed = parseLine(l);
+          if(parsed) entries.push(parsed);
+        }
+      }catch(e){console.warn('Fehler beim Lesen',f.name,e)}
+    }
+    return {entries: entries.sort((a,b)=>a.ts-b.ts), availableFileDates};
+  }
+
+  // For File System Access API (secure contexts)
+  async function readFilesFromDirHandle(dirHandle){
+    const entries = [];
+    const availableFileDates = new Set();
+    const re = /^\d{8}\.txt$/i;
+    try{
+      for await (const [name, handle] of dirHandle.entries()){
+        if(handle.kind === 'file' && re.test(name)){
+          const fileDateKey = name.substr(0,8);
+          availableFileDates.add(fileDateKey);
+          try{
+            const file = await handle.getFile();
+            const txt = await file.text();
+            const lines = txt.split(/\r?\n/);
+            for(const l of lines){
+              const parsed = parseLine(l);
+              if(parsed) entries.push(parsed);
+            }
+          }catch(e){console.warn('read error',name,e)}
+        }
+      }
+    }catch(e){console.warn('dir read error',e)}
+    return {entries: entries.sort((a,b)=>a.ts-b.ts), availableFileDates};
+  }
+
+  // --- Chart setup ---
+  const ctx = document.getElementById('chart').getContext('2d');
+  let chart = null;
+  function createChart(){
+    if(chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {datasets:[]},
+      options: {
+        animation:false,
+        interaction:{mode:'nearest',axis:'x',intersect:false},
+        scales: {
+          x: {
+            type: 'linear',
+            title:{display:true,text:'Zeit'},
+            ticks:{
+              callback: function(val){
+                const d = new Date(Number(val));
+                return d.toLocaleString(undefined,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+              }
+            }
+          },
+          y: {
+            title:{display:true,text:'Temperatur (°C)'}
+          }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              title: (items)=>{ const d = new Date(items[0].parsed.x); return d.toLocaleString(); },
+              label: (ctx)=> `${ctx.dataset.label}: ${ctx.parsed.y} °C`
+            }
+          },
+          legend:{position:'top'}
+        }
+      }
+    });
+  }
+
+  function updateChart(entries, fromTs, toTs){
+    const slice = entries.filter(e=>e.ts>=fromTs && e.ts<=toTs);
+    const ds1 = slice.map(e=>({x:e.ts,y:parseFloat(e.t1.toFixed(2))}));
+    const ds2 = slice.map(e=>({x:e.ts,y:parseFloat(e.t2.toFixed(2))}));
+    createChart();
+    chart.data.datasets = [
+      {label:'Sensor 1',data:ds1,fill:false,pointRadius:2,tension:0.15},
+      {label:'Sensor 2',data:ds2,fill:false,pointRadius:2,tension:0.15}
+    ];
+    chart.update();
+  }
+
+  // --- Calendar widget ---
+  const calendarEl = document.getElementById('calendar');
+  let calYear = (new Date()).getFullYear();
+  let calMonth = (new Date()).getMonth();
+  let availableSet = new Set(); // strings 'YYYYMMDD'
+
+  function formatISODateKey(dt){
+    const y = dt.getFullYear(); const m = ('0'+(dt.getMonth()+1)).slice(-2); const d = ('0'+dt.getDate()).slice(-2); return `${y}${m}${d}`;
+  }
+  function formatISODisplay(dt){
+    const y = dt.getFullYear(); const m = ('0'+(dt.getMonth()+1)).slice(-2); const d = ('0'+dt.getDate()).slice(-2); return `${y}-${m}-${d}`;
+  }
+
+  function renderCalendar(year, month){
+    calYear = year; calMonth = month;
+    const first = new Date(year, month, 1);
+    const startWeekDay = first.getDay(); // 0..6 (Sun..Sat)
+    const weekdayNames = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+    calendarEl.innerHTML = '';
+    const head = document.createElement('div'); head.className='cal-head';
+    const prev = document.createElement('button'); prev.textContent='◀'; prev.onclick = ()=>{ const d=new Date(calYear,calMonth-1,1); renderCalendar(d.getFullYear(),d.getMonth()); };
+    const next = document.createElement('button'); next.textContent='▶'; next.onclick = ()=>{ const d=new Date(calYear,calMonth+1,1); renderCalendar(d.getFullYear(),d.getMonth()); };
+    const title = document.createElement('div'); title.textContent = first.toLocaleString(undefined,{month:'long',year:'numeric'});
+    head.appendChild(prev); head.appendChild(title); head.appendChild(next);
+    calendarEl.appendChild(head);
+
+    const gridHeader = document.createElement('div'); gridHeader.className='cal-grid';
+    for(const n of weekdayNames){ const el=document.createElement('div'); el.className='cal-day'; el.style.fontWeight='700'; el.textContent=n; gridHeader.appendChild(el); }
+    calendarEl.appendChild(gridHeader);
+
+    const grid = document.createElement('div'); grid.className='cal-grid';
+    const firstWeekdayMonIndex = (first.getDay()+6)%7; // 0..6
+    for(let i=0;i<firstWeekdayMonIndex;i++){ const blank=document.createElement('div'); blank.className='cal-day disabled'; blank.textContent=''; grid.appendChild(blank); }
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const todayKey = formatISODateKey(new Date());
+    for(let d=1; d<=daysInMonth; d++){
+      const dateObj = new Date(year, month, d);
+      const key = formatISODateKey(dateObj);
+      const dayEl = document.createElement('div'); dayEl.className='cal-day'; dayEl.textContent = d;
+      if(key === todayKey) dayEl.classList.add('today');
+      if(availableSet.has(key)){
+        dayEl.classList.add('available');
+        dayEl.title = 'Daten vorhanden: ' + formatISODisplay(dateObj);
+        dayEl.onclick = ()=>{ selectDateFromCalendar(dateObj); };
+      } else {
+        dayEl.classList.add('disabled');
+      }
+      grid.appendChild(dayEl);
+    }
+    calendarEl.appendChild(grid);
+  }
+
+  function selectDateFromCalendar(dateObj){
+    document.getElementById('rangeSelect').value = 'day';
+    currentSelectedDate = dateObj;
+    render();
+  }
+
+  function updateAvailableUI(){
+    const arr = Array.from(availableSet).sort();
+    const display = arr.map(k=>`${k.slice(0,4)}-${k.slice(4,6)}-${k.slice(6,8)}`);
+    document.getElementById('availableList').textContent = display.length?('Verfügbare Tage: ' + display.join(', ')):'Keine Dateien gefunden.';
+    renderCalendar(calYear, calMonth);
+  }
+
+  // --- App logic ---
+  let lastEntries = [];
+  let currentSelectedDate = new Date();
+  const fileInput = document.getElementById('fileInput');
+  const dirPickBtn = document.getElementById('dirPickBtn');
+  const rangeSelect = document.getElementById('rangeSelect');
+  const loadBtn = document.getElementById('loadBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  function toISODateInput(dt){ const y=dt.getFullYear(); const m=('0'+(dt.getMonth()+1)).slice(-2); const d=('0'+dt.getDate()).slice(-2); return `${y}-${m}-${d}`; }
+
+  const today = new Date();
+  currentSelectedDate = today;
+  renderCalendar(today.getFullYear(), today.getMonth());
+
+  async function loadFromFileInput(){
+    const res = await readFilesFromFileInput(fileInput.files);
+    lastEntries = res.entries;
+    availableSet = res.availableFileDates;
+    if(lastEntries.length===0) alert('Keine passenden .txt Dateien gefunden. Stelle sicher, dass die Dateien YYYYMMDD.txt heißen.');
+    updateAvailableUI();
+    render();
+  }
+
+  async function pickDirAndLoad(){
+    if(!window.showDirectoryPicker){
+      alert('Ihr Browser unterstützt die Directory Picker API nicht. Bitte benutzen Sie das Datei‑Eingabefeld oder einen Chromium‑Browser / starten Sie einen lokalen Webserver.');
+      return;
+    }
+    try{
+      const dirHandle = await window.showDirectoryPicker();
+      const res = await readFilesFromDirHandle(dirHandle);
+      lastEntries = res.entries;
+      availableSet = res.availableFileDates;
+      if(lastEntries.length===0) alert('Keine passenden .txt Dateien im ausgewählten Ordner gefunden.');
+      updateAvailableUI();
+      render();
+    }catch(e){console.warn('dir pick cancelled',e)}
+  }
+
+  function getRangeForSelection(centerDate, mode){
+    const d = new Date(centerDate.getFullYear(), centerDate.getMonth(), centerDate.getDate());
+    if(mode==='day'){ const from = d.getTime(); const to = from + 24*3600*1000 - 1; return [from,to]; }
+    else if(mode==='week'){ const from = d.getTime(); const to = from + 7*24*3600*1000 - 1; return [from,to]; }
+    else if(mode==='month'){ const from = new Date(d.getFullYear(), d.getMonth(), 1).getTime(); const to = new Date(d.getFullYear(), d.getMonth()+1, 1).getTime() - 1; return [from,to]; }
+    else { if(lastEntries.length===0) return [0, Date.now()]; return [lastEntries[0].ts, lastEntries[lastEntries.length-1].ts]; }
+  }
+
+  function render(){
+    if(!lastEntries || lastEntries.length===0){ createChart(); return; }
+    const mode = document.getElementById('rangeSelect').value;
+    const [from,to] = getRangeForSelection(currentSelectedDate, mode);
+    updateChart(lastEntries, from, to);
+  }
+
+  prevBtn.addEventListener('click', ()=>{ const mode = rangeSelect.value; if(mode==='day') currentSelectedDate.setDate(currentSelectedDate.getDate()-1); else if(mode==='week') currentSelectedDate.setDate(currentSelectedDate.getDate()-7); else if(mode==='month') currentSelectedDate.setMonth(currentSelectedDate.getMonth()-1); else currentSelectedDate.setDate(currentSelectedDate.getDate()-30); render(); });
+  nextBtn.addEventListener('click', ()=>{ const mode = rangeSelect.value; if(mode==='day') currentSelectedDate.setDate(currentSelectedDate.getDate()+1); else if(mode==='week') currentSelectedDate.setDate(currentSelectedDate.getDate()+7); else if(mode==='month') currentSelectedDate.setMonth(currentSelectedDate.getMonth()+1); else currentSelectedDate.setDate(currentSelectedDate.getDate()+30); render(); });
+
+  loadBtn.addEventListener('click', async ()=>{ if(fileInput.files && fileInput.files.length>0){ await loadFromFileInput(); } else{ alert('Bitte zuerst einen Ordner mit .txt Dateien via "Ordner auswählen" wählen, oder den Button "Ordner öffnen" verwenden.'); } });
+
+  fileInput.addEventListener('change', async ()=>{ await loadFromFileInput(); });
+  dirPickBtn.addEventListener('click', pickDirAndLoad);
+  rangeSelect.addEventListener('change', render);
+
+  createChart();
+  </script>
+</body>
+</html>
